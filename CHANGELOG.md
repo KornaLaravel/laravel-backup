@@ -2,6 +2,13 @@
 
 All notable changes to `laravel-backup` will be documented in this file.
 
+## 10.2.2 - 2026-06-01
+
+### What's Changed
+
+* The `backup:clean` command now resolves the cleanup strategy from the config passed via `--config` instead of always using the default config's strategy (#1976). Reported in #1975.
+* Fixed a PHPStan error in `File::mimeType()` (#1977).
+
 ## 10.2.1 - 2026-03-26
 
 Fix German translations in notifications.php
