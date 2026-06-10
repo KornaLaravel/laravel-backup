@@ -2,6 +2,28 @@
 
 All notable changes to `laravel-backup` will be documented in this file.
 
+## 10.3.0 - 2026-06-10
+
+#### Backup archives are now encrypted while they are being built (#1978)
+
+Previously the archive was written unencrypted and then rewritten with encryption by the `EncryptBackupArchive` listener, writing large backups to disk twice. Encryption is now applied per file while the zip is built, so the archive is only written once. The configuration (`backup.backup.password` and `backup.backup.encryption`) and the resulting archives are unchanged.
+
+**Upgrade notes**
+
+- `Spatie\Backup\Listeners\EncryptBackupArchive` is deprecated and no longer registered. If you registered this listener yourself, remove that registration. The class is kept and still works for backwards compatibility.
+- If you suppressed encryption by unregistering the listener while keeping a password configured, set `backup.backup.encryption` to `'none'` instead.
+- If encryption cannot be applied (for example libzip without AES support), the backup now fails with `BackupFailed` instead of silently producing an unencrypted archive.
+
+### What's Changed
+
+* Encrypt archives while they are being built by @pellaras in https://github.com/spatie/laravel-backup/pull/1978
+
+### New Contributors
+
+* @pellaras made their first contribution in https://github.com/spatie/laravel-backup/pull/1978
+
+**Full Changelog**: https://github.com/spatie/laravel-backup/compare/10.2.2...10.3.0
+
 ## 10.2.2 - 2026-06-01
 
 ### What's Changed
