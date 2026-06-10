@@ -256,7 +256,6 @@ class BackupJob
 
         backupLogger()->info("Created zip containing {$zip->count()} files and directories. Size is {$zip->humanReadableSize()}");
 
-        // Always fire the event (listeners like encryption depend on it)
         event(new BackupZipWasCreated($pathToZip));
 
         if ($this->config->backup->verifyBackup) {

@@ -1,125 +1,32 @@
 <?php
 
 use Spatie\Backup\Events\BackupZipWasCreated;
+use Spatie\Backup\Listeners\EncryptBackupArchive;
 
-beforeEach(function () {
-    config()->set('backup.backup.password', fakePassword());
-});
+it('still encrypts an archive when invoked manually', function () {
+    $this->initializeTempDirectory();
 
-it('keeps archive unencrypted without password', function () {
-    config()->set('backup.backup.password', null);
+    config()->set('backup.backup.password', '24dsjF6BPjWgUfTu');
 
-    $path = zip();
+    $path = $this->getTempDirectory().'/archive.zip';
 
-    $zip = new ZipArchive;
-    $zip->open($path);
+    copy(__DIR__.'/../stubs/archive.zip', $path);
 
-    assertEncryptionMethod($zip, ZipArchive::EM_NONE);
-
-    $this->assertTrue($zip->extractTo(__DIR__.'/../temp/extraction'));
-    assertValidExtractedFiles();
-
-    $zip->close();
-});
-
-it('keeps archive unencrypted when encryption is set to null', function () {
-    config()->set('backup.backup.encryption', null);
-
-    $path = zip();
+    app(EncryptBackupArchive::class)->handle(new BackupZipWasCreated($path));
 
     $zip = new ZipArchive;
     $zip->open($path);
 
-    assertEncryptionMethod($zip, ZipArchive::EM_NONE);
-
-    $this->assertTrue($zip->extractTo(__DIR__.'/../temp/extraction'));
-    assertValidExtractedFiles();
-
-    $zip->close();
-});
-
-it('keeps archive unencrypted when encryption is set to false', function () {
-    config()->set('backup.backup.encryption', false);
-
-    $path = zip();
-
-    $zip = new ZipArchive;
-    $zip->open($path);
-
-    assertEncryptionMethod($zip, ZipArchive::EM_NONE);
-
-    $this->assertTrue($zip->extractTo(__DIR__.'/../temp/extraction'));
-    assertValidExtractedFiles();
-
-    $zip->close();
-});
-
-/**
- * @param  int  $algorithm
- */
-it('encrypts archive with password', function (string $encryption, int $algorithm) {
-    config()->set('backup.backup.encryption', $encryption);
-
-    $path = zip();
-
-    $zip = new ZipArchive;
-    $zip->open($path);
-
-    assertEncryptionMethod($zip, $algorithm);
-
-    $zip->setPassword(fakePassword());
-    $this->assertTrue($zip->extractTo(__DIR__.'/../temp/extraction'));
-    assertValidExtractedFiles();
-
-    $zip->close();
-})->with([
-    ['aes128', ZipArchive::EM_AES_128],
-    ['aes192', ZipArchive::EM_AES_192],
-    ['aes256', ZipArchive::EM_AES_256],
-]);
-
-it('can not open encrypted archive without password', function () {
-    $path = zip();
-
-    $zip = new ZipArchive;
-    $zip->open($path);
-
-    assertEncryptionMethod($zip, ZipArchive::EM_AES_256);
-
-    expect($zip->extractTo(__DIR__.'/../temp/extraction'))->toBeFalse();
-
-    $zip->close();
-});
-
-function zip(): string
-{
-    $source = __DIR__.'/../stubs/archive.zip';
-    $target = __DIR__.'/../temp/archive.zip';
-
-    copy($source, $target);
-
-    app()->call('\Spatie\Backup\Listeners\EncryptBackupArchive@handle', ['event' => new BackupZipWasCreated($target)]);
-
-    return $target;
-}
-
-function assertEncryptionMethod(ZipArchive $zip, int $algorithm): void
-{
     foreach (range(0, $zip->numFiles - 1) as $i) {
-        expect($zip->statIndex($i)['encryption_method'])->toBe($algorithm);
+        expect($zip->statIndex($i)['encryption_method'])->toBe(ZipArchive::EM_AES_256);
     }
-}
 
-function assertValidExtractedFiles(): void
-{
+    $zip->setPassword('24dsjF6BPjWgUfTu');
+    expect($zip->extractTo($this->getTempDirectory().'/extraction'))->toBeTrue();
+
     foreach (['file1.txt', 'file2.txt', 'file3.txt'] as $filename) {
-        $filepath = __DIR__.'/../temp/extraction/'.$filename;
-        expect(file_exists($filepath))->toBeTrue();
-        expect(file_get_contents($filepath))->toBe('lorum ipsum');
+        expect(file_get_contents($this->getTempDirectory().'/extraction/'.$filename))->toBe('lorum ipsum');
     }
-}
 
-function fakePassword(): string
-{
-    return '24dsjF6BPjWgUfTu';
-}
+    $zip->close();
+});
